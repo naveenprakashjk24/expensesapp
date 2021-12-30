@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from rest_framework import generics, status, views
-from .serializers import RegisterSerializer, EmailVerificationSerializer
+from .serializers import RegisterSerializer, EmailVerificationSerializer, LoginUserSerializer
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User
@@ -22,23 +22,20 @@ class RegisterApiview(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         user_data = serializer.data
-        user_token = User.objects.get(email=user_data['email'])
-        token = RefreshToken.for_user(user_token).access_token
-
+        user = User.objects.get(email=user_data['email'])
+        token = RefreshToken.for_user(user).access_token
         current_site = get_current_site(request).domain
         relativeLink = reverse('email-verify')
         absurl = 'http://' + current_site + relativeLink + '?token=' + str(token)
         subject = 'Verify your email'
-        email_body = 'Hi ' + str(user_token.username) + ' use link below to verify your email \n ' + absurl
-        data = {'email_body': email_body, 'to_email': user_token.email, 'email_subject': subject}
+        email_body = 'Hi ' + str(user.username) + ' use link below to verify your email \n ' + absurl
+        data = {'email_body': email_body, 'to_email': user.email, 'email_subject': subject}
         Util.sent_email(data)
-
         return Response(user_data, status=status.HTTP_201_CREATED)
 
 
 class VerifyEmail(views.APIView):
     serializer_class = EmailVerificationSerializer
-
     token_parm_config = openapi.Parameter('token', in_=openapi.IN_QUERY, description='Description',
                                           type=openapi.TYPE_STRING)
 
@@ -56,3 +53,12 @@ class VerifyEmail(views.APIView):
             return Response({'error': 'Activation expired'}, status=status.HTTP_400_BAD_REQUEST)
         except jwt.exceptions.DecodeError as identifier:
             return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LoginApiView(generics.GenericAPIView):
+    serializer_class = LoginUserSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
