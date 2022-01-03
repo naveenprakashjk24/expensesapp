@@ -18,14 +18,14 @@ class ExpenseApiView(ListCreateAPIView):
         return self.queryset.filter(owner=self.request.user)
 
 
-class ExpenseDeatilApiView(RetrieveUpdateDestroyAPIView):
+class ExpenseDetailApiView(RetrieveUpdateDestroyAPIView):
     serializer_class = ExpenseSerializer
     queryset = Expense.objects.all()
     permission_classes = (permissions.IsAuthenticated,IsOwner,)
     lookup_field = 'id'
 
-    def perform_create(self, serializer, id):
+    def perform_create(self, serializer):
         return serializer.save(owner=self.request.user)
 
-    def get_queryset(self, id ):
+    def get_queryset(self):
         return self.queryset.filter(owner=self.request.user)
